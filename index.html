@@ -402,11 +402,19 @@
   <div class="final-wrap hide" id="finalWrap">
     <section class="fw-section" id="fwGameSection">
       <h2>🎮 Step 4 · 미션! 목표물을 명중시킬 접선을 찾아라</h2>
-      <p>곡선 <strong>f(x) = −x² + 5</strong> 위에 있는 파란색 점(x = 1)에서 레이저를 쏴서 빨간색 과녁을 맞혀야 해요. 슬라이더를 조절해 정확한 <strong>접선의 기울기</strong>를 찾아보세요!</p>
+      <p>곡선 <strong>f(x) = −x² + 5</strong> 위에 있는 파란색 점(x = 1)에서 레이저를 쏴서 빨간색 과녁을 맞혀야 해요. 계산으로 정확한 <strong>접선의 기울기</strong>를 구해서 입력해보세요!</p>
       <canvas id="fwGameCanvas" width="600" height="400"></canvas>
       <div class="fw-controls">
-        <label for="fwSlopeSlider">기울기 (m): <span id="fwSlopeValue">0.0</span></label><br>
-        <input type="range" id="fwSlopeSlider" min="-5" max="5" step="0.1" value="0">
+        <label for="fwSlopeInput">접선의 기울기 (m) 값을 입력하세요</label><br>
+        <input type="text" inputmode="decimal" id="fwSlopeInput" placeholder="숫자 입력" style="margin-top:8px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:15px; width:120px; text-align:center;">
+        <button class="primary" id="fwSlopeSubmit" style="margin-left:8px;">확인</button>
+      </div>
+      <p class="fw-wrong" id="fwWrongMessage" style="display:none; text-align:center; color:#c1583b; font-size:14.5px; margin-top:4px;">아직 정답이 아니에요. 다시 계산해서 입력해보세요.</p>
+      <div style="text-align:center;">
+        <button class="hint-toggle" id="fwHintBtn" style="display:none;">힌트 보기</button>
+        <div class="hint-box" id="fwHintBox" style="text-align:left;">
+          f(x) = −x² + 5 의 도함수를 구하는 공식을 떠올려보세요. 도함수에 점의 x좌표를 대입하면 그 점에서의 접선의 기울기를 구할 수 있어요.
+        </div>
       </div>
       <p class="fw-success" id="fwSuccessMessage">🎉 완벽합니다! 접선을 정확히 찾았어요. (아래로 스크롤하여 이어서 확인하세요)</p>
     </section>
@@ -637,20 +645,24 @@ function renderStage1Extra(){
 }
 
 function renderStage2Extra(){
-  const a = state.s2.x, ya = f(a);
-  drawPoint(a, ya, "#3b7dbf", `(${a.toFixed(1)}, ${ya.toFixed(1)})`);
-  drawTangentAt(a, 6, 10, state.s2.locked ? "#3f8f5c" : "#3b7dbf");
+  const s = state.s2;
+  if(!s.locked) return; // 정답을 맞히기 전에는 그래프에 아무것도 표시하지 않음
+  const a = s.x, ya = f(a);
+  drawPoint(a, ya, "#3f8f5c", `(${a.toFixed(1)}, ${ya.toFixed(1)})`);
+  drawTangentAt(a, 6, 10, "#3f8f5c");
   drawCar(a,ya,0);
 }
 
 function renderStage3Extra(){
-  const a = state.s3.x, ya = f(a);
-  drawPoint(a, ya, "#9a4fae", `(${a.toFixed(1)}, ${ya.toFixed(1)})`);
+  const s = state.s3;
+  if(!s.locked) return; // 정답을 맞히기 전에는 그래프에 아무것도 표시하지 않음
+  const a = s.x, ya = f(a);
+  drawPoint(a, ya, "#3f8f5c", `(${a.toFixed(1)}, ${ya.toFixed(1)})`);
   // draw the tangent line extended toward x=20 to see if it reaches tzuyu's house
   const slope = fp(a);
   const x1 = 21;
   const y1 = ya + slope*(x1-a);
-  drawLineSeg(a, ya, x1, y1, state.s3.locked ? "#3f8f5c" : "#9a4fae", 3.5);
+  drawLineSeg(a, ya, x1, y1, "#3f8f5c", 3.5);
   drawCar(a,ya,0);
 }
 
@@ -755,56 +767,49 @@ function startStage1Run(){
 
 function renderStage2Panel(){
   const s = state.s2;
-  const slope = fp(s.x);
   panel.innerHTML = `
     <h2>미션 2 · 기울기 3인 도로 잇기</h2>
     <div class="story">
       기존 도로(곡선)에 <b>기울기가 3</b>인 새 직선 도로를 연결하려고 해요.
-      슬라이더로 접점을 움직여 접선의 기울기가 3이 되는 지점을 찾고, 확인 버튼을 눌러보세요.
+      f'(x) = 3 이 되는 접점의 <b>x좌표</b>를 계산해서 입력해보세요.
     </div>
     <div class="slider-block">
-      <label><span>접점의 x좌표</span><span id="s2xLabel">x = ${s.x.toFixed(1)}</span></label>
-      <input type="range" min="-4" max="14" step="0.01" value="${s.x}" id="slider2" ${s.locked?"disabled":""}/>
-    </div>
-    <div class="readout">
-      <div class="chip">현재 기울기 f'(x) = <b id="s2SlopeVal">${slope.toFixed(1)}</b></div>
-      <div class="chip">목표 기울기 <b>3.0</b></div>
+      <label for="s2Input">접점의 x좌표</label>
+      <input type="text" inputmode="decimal" id="s2Input" placeholder="숫자 입력" ${s.locked?"disabled":""}
+        style="margin-top:6px; padding:9px 12px; border:1px solid var(--paper-line); border-radius:8px; font-size:15px; width:120px; text-align:center;">
     </div>
     <div class="actions">
-      <button class="primary" id="lockBtn" ${s.locked?"disabled":""}>이 지점으로 확인해보기</button>
+      <button class="primary" id="lockBtn" ${s.locked?"disabled":""}>확인</button>
       ${s.locked ? `<button class="ghost" id="nextBtn2">다음 미션 →</button>` : ""}
     </div>
     ${s.tried ? `
       <button class="hint-toggle" id="hintBtn2">힌트 보기</button>
       <div class="hint-box ${state.hintOpen?'show':''}">
-        f'(x) = ½x − 1 = 3 을 풀면 x = 8이에요. f(8) = ¼(64) − 8 + 5 = 13.
+        기울기가 3이라는 건 f'(x) = 3 이라는 뜻이에요. f'(x)를 구하는 식을 세우고, 그 식이 3이 되도록 하는 x에 대한 방정식을 풀어보세요.
       </div>
     ` : ""}
     <div class="feedback ${s.locked ? 'show ok' : (s.tried && s.wrong ? 'show no' : '')}" id="fb2">
       ${s.locked
         ? `도로 완성! 접점은 <b>(8, 13)</b>이고, 새 도로의 방정식은 <b>y = 3x − 11</b>이에요.`
-        : (s.tried && s.wrong ? `아직 기울기가 3이 아니에요. 슬라이더를 조절해서 다시 확인해보세요.` : "")}
+        : (s.tried && s.wrong ? `아직 정답이 아니에요. 다시 계산해서 입력해보세요.` : "")}
     </div>
   `;
-  const slider = document.getElementById('slider2');
-  if(slider) slider.oninput = (e)=>{
-    s.x = parseFloat(e.target.value);
-    document.getElementById('s2xLabel').textContent = `x = ${s.x.toFixed(1)}`;
-    document.getElementById('s2SlopeVal').textContent = fp(s.x).toFixed(1);
-    redrawCanvas();
-  };
+  const input2 = document.getElementById('s2Input');
   const lockBtn = document.getElementById('lockBtn');
-  if(lockBtn) lockBtn.onclick = ()=>{
+  function attempt(){
+    if(s.locked) return;
+    const val = parseFloat((input2.value||"").trim());
     s.tried = true;
-    const matched = Math.abs(fp(s.x)-3) < 0.05;
-    if(matched){
-      s.locked = true; s.wrong = false;
+    if(!isNaN(val) && Math.abs(val-8) < 0.1){
+      s.x = 8; s.locked = true; s.wrong = false;
       awardSticker('m2');
     } else {
       s.wrong = true;
     }
     render();
-  };
+  }
+  if(lockBtn) lockBtn.onclick = attempt;
+  if(input2) input2.addEventListener('keydown', (e)=>{ if(e.key==='Enter') attempt(); });
   const nextBtn2 = document.getElementById('nextBtn2');
   if(nextBtn2) nextBtn2.onclick = ()=>{ state.stage=3; renderStageTrack(); render(); };
   const hintBtn2 = document.getElementById('hintBtn2');
@@ -813,65 +818,51 @@ function renderStage2Panel(){
 
 function renderStage3Panel(){
   const s = state.s3;
-  const a = s.x;
-  const slope = fp(a);
-  const ya = f(a);
-  const yAt20 = ya + slope*(20-a);
   panel.innerHTML = `
     <h2>미션 3 · 재영이네 집으로 가는 도로</h2>
     <div class="story">
       곡선 도로에서 <b>재영이네 집 (20, 36)</b>까지 안전하게 이어지는 직선 도로를 만들어야 해요.
-      슬라이더로 접점을 움직여, 접선이 정확히 재영이네 집을 지나는 지점을 찾고 확인 버튼을 눌러보세요.
+      접선이 정확히 재영이네 집을 지나는 접점의 <b>x좌표</b>를 계산해서 입력해보세요.
     </div>
     <div class="slider-block">
-      <label><span>접점의 x좌표</span><span id="s3xLabel">x = ${a.toFixed(1)}</span></label>
-      <input type="range" min="-4" max="14" step="0.01" value="${a}" id="slider3" ${s.locked?"disabled":""}/>
-    </div>
-    <div class="readout">
-      <div class="chip">x = 20일 때 도로의 y값 <b id="s3YAt20Val">${yAt20.toFixed(1)}</b></div>
-      <div class="chip">재영이네 집 y값 <b>36</b></div>
+      <label for="s3Input">접점의 x좌표</label>
+      <input type="text" inputmode="decimal" id="s3Input" placeholder="숫자 입력" ${s.locked?"disabled":""}
+        style="margin-top:6px; padding:9px 12px; border:1px solid var(--paper-line); border-radius:8px; font-size:15px; width:120px; text-align:center;">
     </div>
     <div class="actions">
-      <button class="primary" id="lockBtn3" ${s.locked?"disabled":""}>이 지점으로 확인해보기</button>
+      <button class="primary" id="lockBtn3" ${s.locked?"disabled":""}>확인</button>
       ${s.locked ? `<button class="ghost" id="nextBtn3">결과 보기 →</button>` : ""}
     </div>
     ${s.tried ? `
       <button class="hint-toggle" id="hintBtn3">힌트 보기</button>
       <div class="hint-box ${state.hintOpen?'show':''}">
-        접점을 (a, f(a))라 하면 접선은 y − f(a) = f'(a)(x − a). 이 직선이 (20, 36)을 지난다는 조건으로
-        방정식을 세우면 a² − 40a + 204 = 0, 즉 a = 6 또는 a = 34가 나와요.
-        그래프 범위 안에서 자연스러운 답은 <b>a = 6</b>이에요.
+        접점을 (a, f(a))라 하면 접선의 방정식은 y − f(a) = f'(a)(x − a)예요. 이 직선이 점 (20, 36)을 지난다는 조건을
+        대입해서 a에 대한 방정식을 세우고 풀어보세요. 이차방정식이라 해가 두 개 나올 수 있으니, 그래프에서 자연스러운 쪽을 골라보세요.
       </div>
     ` : ""}
     <div class="feedback ${s.locked ? 'show ok' : (s.tried && s.wrong ? 'show no' : '')}" id="fb3">
       ${s.locked
         ? `도로 완성! 접점은 <b>(6, 8)</b>이고, 새 도로의 방정식은 <b>y = 2x − 4</b>예요. 재영이네 집까지 안전하게 연결됐어요.`
-        : (s.tried && s.wrong ? `아직 재영이네 집을 지나지 않아요. 슬라이더를 조절해서 다시 확인해보세요.` : "")}
+        : (s.tried && s.wrong ? `아직 정답이 아니에요. 다시 계산해서 입력해보세요.` : "")}
     </div>
   `;
-  const slider = document.getElementById('slider3');
-  if(slider) slider.oninput = (e)=>{
-    s.x = parseFloat(e.target.value);
-    const a2 = s.x, slope2 = fp(a2), ya2 = f(a2);
-    const yAt20_2 = ya2 + slope2*(20-a2);
-    document.getElementById('s3xLabel').textContent = `x = ${a2.toFixed(1)}`;
-    document.getElementById('s3YAt20Val').textContent = yAt20_2.toFixed(1);
-    redrawCanvas();
-  };
+  const input3 = document.getElementById('s3Input');
   const lockBtn = document.getElementById('lockBtn3');
-  if(lockBtn) lockBtn.onclick = ()=>{
+  function attempt(){
+    if(s.locked) return;
+    const val = parseFloat((input3.value||"").trim());
     s.tried = true;
-    const a2 = s.x, slope2 = fp(a2), ya2 = f(a2);
-    const yAt20_2 = ya2 + slope2*(20-a2);
-    const matched = Math.abs(yAt20_2 - 36) < 0.4;
-    if(matched){
-      s.locked = true; s.wrong = false;
+    const isRoot = !isNaN(val) && (Math.abs(val-6) < 0.1 || Math.abs(val-34) < 0.1);
+    if(isRoot){
+      s.x = 6; s.locked = true; s.wrong = false;
       awardSticker('m3');
     } else {
       s.wrong = true;
     }
     render();
-  };
+  }
+  if(lockBtn) lockBtn.onclick = attempt;
+  if(input3) input3.addEventListener('keydown', (e)=>{ if(e.key==='Enter') attempt(); });
   const nextBtn3 = document.getElementById('nextBtn3');
   if(nextBtn3) nextBtn3.onclick = ()=>{ state.stage=4; renderStageTrack(); render(); };
   const hintBtn3 = document.getElementById('hintBtn3');
@@ -1034,14 +1025,19 @@ function initFinalSection(){
   /* --- Step 4: 레이저 미션 --- */
   const gCanvas = document.getElementById('fwGameCanvas');
   const gCtx = gCanvas.getContext('2d');
-  const slider = document.getElementById('fwSlopeSlider');
-  const slopeVal = document.getElementById('fwSlopeValue');
+  const answerInput = document.getElementById('fwSlopeInput');
+  const submitBtn = document.getElementById('fwSlopeSubmit');
+  const wrongMsg = document.getElementById('fwWrongMessage');
+  const hintBtn = document.getElementById('fwHintBtn');
+  const hintBox = document.getElementById('fwHintBox');
   const successMsg = document.getElementById('fwSuccessMessage');
   const reviewSec = document.getElementById('fwReviewSection');
   const simSec = document.getElementById('fwSimSection');
   const sim2Sec = document.getElementById('fwSim2Section');
 
   let gameSolved = false;
+  let triedOnce = false;
+  const correctSlope = -2;
 
   function toCanvas(x, y){
     const scale = 40;
@@ -1089,19 +1085,21 @@ function initFinalSection(){
     gCtx.fillText(gameSolved ? '명중!' : '과녁', gx, gy+30);
     gCtx.textAlign = 'left';
 
-    let currentSlope = parseFloat(slider.value);
-    gCtx.strokeStyle = gameSolved ? '#16a34a' : '#ef4444';
-    gCtx.lineWidth = 2;
-    gCtx.beginPath();
-    let startX = -5;
-    let startY = currentSlope*(startX-targetX)+targetY;
-    let endX = 5;
-    let endY = currentSlope*(endX-targetX)+targetY;
-    let [scx,scy] = toCanvas(startX,startY);
-    let [ecx,ecy] = toCanvas(endX,endY);
-    gCtx.moveTo(scx,scy);
-    gCtx.lineTo(ecx,ecy);
-    gCtx.stroke();
+    // 레이저는 정답을 맞혔을 때만 그려서 보여줘요 (미리 보고 끼워맞추지 못하도록)
+    if(gameSolved){
+      gCtx.strokeStyle = '#16a34a';
+      gCtx.lineWidth = 2;
+      gCtx.beginPath();
+      let startX = -5;
+      let startY = correctSlope*(startX-targetX)+targetY;
+      let endX = 5;
+      let endY = correctSlope*(endX-targetX)+targetY;
+      let [scx,scy] = toCanvas(startX,startY);
+      let [ecx,ecy] = toCanvas(endX,endY);
+      gCtx.moveTo(scx,scy);
+      gCtx.lineTo(ecx,ecy);
+      gCtx.stroke();
+    }
 
     gCtx.fillStyle = '#2563eb';
     gCtx.beginPath();
@@ -1109,20 +1107,42 @@ function initFinalSection(){
     gCtx.fill();
   }
 
-  slider.addEventListener('input', (e)=>{
-    let val = parseFloat(e.target.value);
-    slopeVal.innerText = val.toFixed(1);
-    if(val===-2.0 && !gameSolved){
+  function submitAnswer(){
+    if(gameSolved) return;
+    const raw = answerInput.value.trim();
+    const val = parseFloat(raw);
+    if(raw === "" || isNaN(val)){
+      wrongMsg.textContent = '숫자로 입력해주세요.';
+      wrongMsg.style.display = 'block';
+      return;
+    }
+    if(Math.abs(val - correctSlope) < 0.05){
       gameSolved = true;
+      wrongMsg.style.display = 'none';
       successMsg.classList.add('show');
       reviewSec.classList.remove('fw-hidden');
       simSec.classList.remove('fw-hidden');
       sim2Sec.classList.remove('fw-hidden');
+      answerInput.disabled = true;
+      submitBtn.disabled = true;
       awardSticker('laser');
       startSim();
       startSim2();
+      drawGame();
+    } else {
+      triedOnce = true;
+      hintBtn.style.display = 'inline-block';
+      wrongMsg.textContent = '아직 정답이 아니에요. 다시 계산해서 입력해보세요.';
+      wrongMsg.style.display = 'block';
     }
-    drawGame();
+  }
+
+  submitBtn.addEventListener('click', submitAnswer);
+  answerInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') submitAnswer();
+  });
+  hintBtn.addEventListener('click', ()=>{
+    hintBox.classList.toggle('show');
   });
   drawGame();
 
