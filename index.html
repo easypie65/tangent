@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>접선 도로 설계 — 곡선 위를 달리다</title>
+<style>
+  :root{
+    --asphalt:#2b2d33;
+    --asphalt-light:#3d4048;
+    --line-yellow:#f4c542;
+    --paper:#eef1e6;
+    --paper-line:#d7dcc9;
+    --ink:#1f2a24;
+    --moss:#3f6650;
+    --moss-dark:#2c4a38;
+    --clay:#c1583b;
+    --sky:#e7e0cf;
+    --house1:#e08a2c;
+    --house2:#3b7dbf;
+    --house3:#9a4fae;
+    --good:#3f8f5c;
+    --bad:#c1583b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--asphalt);
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(255,255,255,0.03), transparent 40%),
+      repeating-linear-gradient(0deg, transparent, transparent 78px, rgba(244,197,66,0.06) 78px, rgba(244,197,66,0.06) 82px);
+    color:var(--paper);
+    font-family: "Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:28px 14px 60px;
+  }
+  .frame{
+    width:100%;
+    max-width:1080px;
+  }
+  header.title-block{
+    text-align:left;
+    margin-bottom:22px;
+    padding-bottom:18px;
+    border-bottom:3px dashed var(--line-yellow);
+  }
+  header.title-block h1{
+    font-size:clamp(24px,4vw,38px);
+    margin:0 0 6px;
+    color:var(--paper);
+    letter-spacing:-0.01em;
+  }
+  header.title-block p{
+    margin:0;
+    color:#c8cdb8;
+    font-size:15px;
+    line-height:1.6;
+  }
+  .stage-track{
+    display:flex;
+    gap:10px;
+    margin:18px 0 26px;
+  }
+  .stage-dot{
+    flex:1;
+    height:8px;
+    border-radius:4px;
+    background:var(--asphalt-light);
+    position:relative;
+    overflow:hidden;
+  }
+  .stage-dot.done{background:var(--good);}
+  .stage-dot.current{background:var(--line-yellow);}
+  .board{
+    background:var(--paper);
+    color:var(--ink);
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 18px 40px rgba(0,0,0,0.35);
+  }
+  .layout{
+    display:grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap:22px;
+  }
+  @media (max-width:840px){
+    .layout{grid-template-columns:1fr;}
+  }
+  .canvas-wrap{
+    background:#fbfbf3;
+    border:2px solid var(--paper-line);
+    border-radius:12px;
+    padding:8px;
+  }
+  canvas{
+    width:100%;
+    height:auto;
+    display:block;
+    border-radius:6px;
+  }
+  .panel h2{
+    font-size:19px;
+    margin:2px 0 10px;
+    color:var(--moss-dark);
+  }
+  .panel .story{
+    font-size:14.5px;
+    line-height:1.65;
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-left:5px solid var(--clay);
+    border-radius:8px;
+    padding:12px 14px;
+    margin-bottom:16px;
+  }
+  .panel .story b{color:var(--clay);}
+  .choice-row{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .choice-btn{
+    text-align:left;
+    padding:10px 14px;
+    border-radius:8px;
+    border:2px solid var(--paper-line);
+    background:#fff;
+    cursor:pointer;
+    font-size:14.5px;
+    color:var(--ink);
+    transition:border-color .15s, background .15s;
+  }
+  .choice-btn:hover{border-color:var(--moss);}
+  .choice-btn.selected{border-color:var(--moss); background:#eef6ef; font-weight:600;}
+  .choice-btn.correct{border-color:var(--good); background:#e5f4ea;}
+  .choice-btn.wrong{border-color:var(--bad); background:#fbe9e5;}
+  .slider-block{margin-bottom:16px;}
+  .slider-block label{
+    display:flex;
+    justify-content:space-between;
+    font-size:13.5px;
+    margin-bottom:6px;
+    color:#555;
+  }
+  .slider-block input[type=range]{
+    width:100%;
+    accent-color:var(--clay);
+  }
+  .readout{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .chip{
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:20px;
+    padding:6px 12px;
+    font-size:13px;
+    font-variant-numeric:tabular-nums;
+  }
+  .chip b{color:var(--moss-dark);}
+  .actions{display:flex; gap:10px; flex-wrap:wrap;}
+  button.primary{
+    background:var(--moss);
+    color:#fff;
+    border:none;
+    padding:11px 20px;
+    border-radius:8px;
+    font-size:14.5px;
+    font-weight:600;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  button.primary:hover{background:var(--moss-dark);}
+  button.primary:disabled{background:#a9b3a5; cursor:not-allowed;}
+  button.ghost{
+    background:transparent;
+    color:var(--moss-dark);
+    border:2px solid var(--moss);
+    padding:9px 18px;
+    border-radius:8px;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .feedback{
+    margin-top:14px;
+    padding:12px 14px;
+    border-radius:8px;
+    font-size:14.5px;
+    line-height:1.6;
+    display:none;
+  }
+  .feedback.show{display:block;}
+  .feedback.ok{background:#e5f4ea; border:1px solid var(--good); color:#245c39;}
+  .feedback.no{background:#fbe9e5; border:1px solid var(--bad); color:#8c3a26;}
+  .hint-toggle{
+    font-size:13px;
+    color:var(--moss-dark);
+    text-decoration:underline;
+    cursor:pointer;
+    background:none;
+    border:none;
+    padding:0;
+    margin-top:8px;
+  }
+  .hint-box{
+    display:none;
+    font-size:13.5px;
+    background:#fff8e6;
+    border:1px dashed #d8b34a;
+    border-radius:8px;
+    padding:10px 12px;
+    margin-top:8px;
+    line-height:1.6;
+  }
+  .hint-box.show{display:block;}
+  .summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:14px;
+    margin-top:16px;
+  }
+  .summary-card{
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:10px;
+    padding:14px 16px;
+  }
+  .summary-card h3{margin:0 0 6px; font-size:15px; color:var(--moss-dark);}
+  .summary-card p{margin:4px 0; font-size:13.5px; line-height:1.55;}
+  .summary-card .eq{
+    font-family:"Cambria Math","Georgia",serif;
+    font-size:16px;
+    color:var(--clay);
+    margin-top:6px;
+  }
+  .intro-actions{margin-top:18px;}
+  footer.note{
+    text-align:center;
+    color:#7f8577;
+    font-size:12px;
+    margin-top:16px;
+  }
+
+  /* ---- sticker bar ---- */
+  .sticker-bar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin:0 0 20px;
+    flex-wrap:wrap;
+  }
+  .sticker-bar .sb-label{
+    font-size:13px;
+    color:#c8cdb8;
+  }
+  .sticker-slots{
+    display:flex;
+    gap:8px;
+  }
+  .sticker-slot{
+    width:38px; height:38px;
+    border-radius:10px;
+    background:var(--asphalt-light);
+    border:2px dashed #565a63;
+    display:flex; align-items:center; justify-content:center;
+    font-size:19px;
+    transition:transform .25s, background .25s, border-color .25s;
+  }
+  .sticker-slot.filled{
+    background:#fff8e2;
+    border:2px solid var(--line-yellow);
+    transform:scale(1.05);
+  }
+  .sticker-slot.pop{
+    animation:stickerPop .5s ease;
+  }
+  @keyframes stickerPop{
+    0%{transform:scale(0.3) rotate(-15deg);}
+    60%{transform:scale(1.25) rotate(8deg);}
+    100%{transform:scale(1.05) rotate(0deg);}
+  }
+
+  /* ---- gachapon (random box) ---- */
+  .gacha-wrap{margin-top:26px;}
+  .gacha-wrap.hide{display:none;}
+  .gacha-card{
+    background:#fff; color:var(--ink);
+    border-radius:16px;
+    padding:30px 24px;
+    text-align:center;
+    box-shadow:0 14px 30px rgba(0,0,0,.28);
+  }
+  .gacha-card h2{
+    margin:0 0 8px; font-size:20px; color:var(--moss-dark);
+  }
+  .gacha-card p{font-size:14.5px; color:#555; margin:0 0 20px; line-height:1.6;}
+  .gacha-box{
+    font-size:84px;
+    cursor:pointer;
+    display:inline-block;
+    user-select:none;
+    transition:transform .15s;
+  }
+  .gacha-box:hover{transform:scale(1.05);}
+  .gacha-box.shaking{animation:gachaShake .6s ease;}
+  .gacha-box.disabled{cursor:default; opacity:.55;}
+  @keyframes gachaShake{
+    0%,100%{transform:translateX(0) rotate(0);}
+    15%{transform:translateX(-8px) rotate(-8deg);}
+    30%{transform:translateX(8px) rotate(8deg);}
+    45%{transform:translateX(-8px) rotate(-8deg);}
+    60%{transform:translateX(8px) rotate(8deg);}
+    75%{transform:translateX(-5px) rotate(-4deg);}
+    90%{transform:translateX(5px) rotate(4deg);}
+  }
+  .gacha-result{
+    margin-top:18px;
+    display:none;
+  }
+  .gacha-result.show{
+    display:block;
+    animation:resultPop .45s ease;
+  }
+  @keyframes resultPop{
+    0%{transform:scale(0.4); opacity:0;}
+    70%{transform:scale(1.12); opacity:1;}
+    100%{transform:scale(1);}
+  }
+  .gacha-result .emoji{font-size:64px; display:block; margin-bottom:8px;}
+  .gacha-result .label{font-size:20px; font-weight:700;}
+  .gacha-result .label.win{color:#c1583b;}
+  .gacha-result .label.lose{color:#8b8f80;}
+  .gacha-result .msg{font-size:14.5px; color:#444; margin-top:8px; line-height:1.6;}
+
+  /* ---- final wrap-up section (자율주행 센서) ---- */
+  .final-wrap{margin-top:26px;}
+  .final-wrap.hide{display:none;}
+  .final-wrap .fw-section{
+    background:#fff; color:#1e293b;
+    padding:26px; border-radius:14px;
+    box-shadow:0 12px 26px rgba(0,0,0,.25);
+    margin-bottom:18px;
+  }
+  .final-wrap .fw-section.fw-hidden{display:none;}
+  .final-wrap h2{
+    margin:0 0 10px; font-size:19px; color:#2563eb;
+    border-bottom:2px solid #e2e8f0; padding-bottom:10px;
+  }
+  .final-wrap p{font-size:14.5px; line-height:1.65; margin:0 0 8px;}
+  .final-wrap canvas{
+    border:1px solid #cbd5e1; border-radius:8px; background:#fff;
+    cursor:crosshair; width:100%; max-width:600px; display:block; margin:18px auto;
+  }
+  .fw-controls{
+    text-align:center; margin:16px 0; padding:14px;
+    background:#f1f5f9; border-radius:8px;
+  }
+  .fw-controls input[type=range]{width:80%; max-width:300px; accent-color:#2563eb;}
+  .fw-success{
+    color:#16a34a; font-weight:bold; font-size:1.05em;
+    display:none; text-align:center; margin-top:6px;
+  }
+  .fw-success.show{display:block;}
+  .fw-math{
+    background:#f8fafc; padding:14px 16px; border-left:4px solid #2563eb;
+    font-size:14.5px; line-height:1.7; border-radius:0 8px 8px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <header class="title-block">
+    <h1>곡선 위를 달리다 — 접선 도로 설계</h1>
+    <p>자동차는 곡선의 접선 방향으로 나아가려는 성질이 있어요. 그 원리로 세 개의 도로 미션을 해결해 보세요.</p>
+  </header>
+
+  <div class="stage-track" id="stageTrack"></div>
+
+  <div class="sticker-bar">
+    <span class="sb-label">모은 스티커</span>
+    <div class="sticker-slots" id="stickerSlots"></div>
+  </div>
+
+  <div class="board">
+    <div class="layout">
+      <div class="canvas-wrap">
+        <canvas id="cv" width="900" height="620"></canvas>
+      </div>
+      <div class="panel" id="panel"></div>
+    </div>
+  </div>
+
+  <footer class="note">f(x) = ¼x² − x + 5 · 해민이네 (14, 31) · 재영이네 (20, 36) · 지우네 (20, 21)</footer>
+
+  <div class="final-wrap hide" id="finalWrap">
+    <section class="fw-section" id="fwGameSection">
+      <h2>🎮 Step 4 · 미션! 목표물을 명중시킬 접선을 찾아라</h2>
+      <p>곡선 <strong>f(x) = −x² + 5</strong> 위에 있는 파란색 점(x = 1)에서 레이저를 쏴서 빨간색 과녁을 맞혀야 해요. 슬라이더를 조절해 정확한 <strong>접선의 기울기</strong>를 찾아보세요!</p>
+      <canvas id="fwGameCanvas" width="600" height="400"></canvas>
+      <div class="fw-controls">
+        <label for="fwSlopeSlider">기울기 (m): <span id="fwSlopeValue">0.0</span></label><br>
+        <input type="range" id="fwSlopeSlider" min="-5" max="5" step="0.1" value="0">
+      </div>
+      <p class="fw-success" id="fwSuccessMessage">🎉 완벽합니다! 접선을 정확히 찾았어요. (아래로 스크롤하여 이어서 확인하세요)</p>
+    </section>
+
+    <section class="fw-section fw-hidden" id="fwReviewSection">
+      <h2>📚 Step 5 · 개념 복습</h2>
+      <p>게임을 통해 우리는 특정한 점을 지나면서 곡선에 스치듯 지나가는 선, 즉 <strong>접선(Tangent line)</strong>을 만들어 보았어요.</p>
+      <div class="fw-math">
+        <p style="margin:0 0 6px;"><strong>접선의 방정식 공식</strong></p>
+        <p style="margin:0;">함수 y = f(x) 위의 점 (a, f(a))에서의 접선의 방정식은 다음과 같아요.</p>
+        <p style="margin:6px 0 0; font-size:1.1em;"><strong>y − f(a) = f'(a)(x − a)</strong></p>
+      </div>
+      <p style="margin-top:12px;">게임 속 곡선은 f(x) = −x² + 5 였어요. 점 x = 1에서의 기울기를 구하려면 도함수 f'(x) = −2x에 1을 대입해요. 따라서 정답 기울기는 <strong>−2</strong> 였어요!</p>
+    </section>
+
+    <section class="fw-section fw-hidden" id="fwSimSection">
+      <h2>🚘 Step 6 · 실생활 적용 ① — 자율주행차의 경로 탐색</h2>
+      <p>이 수학 개념이 자율주행차에는 어떻게 쓰일까요? 자율주행차는 굽은 도로를 달릴 때, 현재 위치에서 앞으로 나아가야 할 <strong>접선 방향(목표 조향각)</strong>을 실시간으로 계산해서 핸들을 꺾어요.</p>
+      <canvas id="fwSimCanvas" width="600" height="300"></canvas>
+      <div class="fw-controls">
+        <label><input type="checkbox" id="fwShowTangent" checked> 센서 접선 벡터(예측 궤적) 보기</label>
+      </div>
+      <p>차량 앞쪽으로 뻗어 나가는 빨간 선이 바로 방금 배운 '접선'이에요. 차량은 매 순간 곡선 도로의 접선의 방정식을 계산해서 궤도를 이탈하지 않고 부드럽게 주행해요.</p>
+    </section>
+
+    <section class="fw-section fw-hidden" id="fwSim2Section">
+      <h2>⚾ Step 7 · 실생활 적용 ② — 날아가는 공의 순간 속도</h2>
+      <p>야구공이나 축구공처럼 곡선을 그리며 날아가는 물체도 마찬가지예요. 공이 지나가는 <strong>매 순간의 속도 방향</strong>은 그 위치에서 궤적(곡선)에 그은 <strong>접선의 방향</strong>과 정확히 같아요. 즉, 순간 속도는 위치 함수를 미분한 접선의 기울기로 계산할 수 있어요.</p>
+      <canvas id="fwSim2Canvas" width="600" height="300"></canvas>
+      <div class="fw-controls">
+        <label><input type="checkbox" id="fwShowVelocity" checked> 순간 속도 벡터(접선) 보기</label>
+      </div>
+      <p>공 앞쪽의 초록색 화살표가 그 순간의 속도 방향이에요. 공이 최고점에 가까워질수록 접선이 거의 수평이 되면서 속도의 수직 성분이 0에 가까워지고, 내려올수록 접선이 점점 가팔라지는 것도 확인해보세요.</p>
+      <p style="text-align:center; font-weight:600; color:#2563eb; margin-top:16px;">여기까지가 오늘 수업의 마무리예요. 수고했어요! 🙌</p>
+    </section>
+
+    <div class="gacha-wrap hide" id="gachaWrap">
+      <div class="gacha-card">
+        <h2>🎁 스티커 4개를 모두 모았어요!</h2>
+        <p>상자를 눌러서 랜덤 보상을 열어보세요. 결과가 나오면 화면을 그대로 선생님께 보여주세요!</p>
+        <div class="gacha-box" id="gachaBox">🎁</div>
+        <div class="gacha-result" id="gachaResult">
+          <span class="emoji" id="gachaEmoji"></span>
+          <span class="label" id="gachaLabel"></span>
+          <p class="msg" id="gachaMsg"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- math model ---------- */
+const f  = x => 0.25*x*x - x + 5;
+const fp = x => 0.5*x - 1;
+const houses = {
+  jeongyeon: {name:"해민이네", x:14, y:31, color:"#e08a2c"},
+  tzuyu:     {name:"재영이네",   x:20, y:36, color:"#3b7dbf"},
+  nayeon:    {name:"지우네", x:20, y:21, color:"#9a4fae"}
+};
+
+/* ---------- view / canvas transform ---------- */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const view = { xMin:-6, xMax:26, yMin:-4, yMax:46 };
+function toPx(x,y){
+  const px = (x - view.xMin) / (view.xMax - view.xMin) * cv.width;
+  const py = cv.height - (y - view.yMin) / (view.yMax - view.yMin) * cv.height;
+  return [px,py];
+}
+
+let state = {
+  stage: 0,          // 0 intro, 1..3 missions, 4 summary
+  s1: { chosen:null, running:false, done:false, carT:0 },
+  s2: { x:2, locked:false, tried:false, wrong:false },
+  s3: { x:2, locked:false, tried:false, wrong:false },
+  hintOpen:false,
+  stickers: { m1:false, m2:false, m3:false, laser:false }
+};
+
+/* ---------- drawing ---------- */
+function drawGrid(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle = "#fbfbf3";
+  ctx.fillRect(0,0,cv.width,cv.height);
+
+  ctx.strokeStyle = "#e3e6d6";
+  ctx.lineWidth = 1;
+  for(let x=Math.ceil(view.xMin/2)*2; x<=view.xMax; x+=2){
+    const [px] = toPx(x,0);
+    ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,cv.height); ctx.stroke();
+  }
+  for(let y=Math.ceil(view.yMin/5)*5; y<=view.yMax; y+=5){
+    const [,py] = toPx(0,y);
+    ctx.beginPath(); ctx.moveTo(0,py); ctx.lineTo(cv.width,py); ctx.stroke();
+  }
+  // axes
+  ctx.strokeStyle = "#9aa08a";
+  ctx.lineWidth = 2;
+  const [pxAxisX] = toPx(0,0);
+  const [,pyAxisY] = toPx(0,0);
+  ctx.beginPath(); ctx.moveTo(pxAxisX,0); ctx.lineTo(pxAxisX,cv.height); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,pyAxisY); ctx.lineTo(cv.width,pyAxisY); ctx.stroke();
+}
+
+function drawCurve(){
+  ctx.strokeStyle = "#4a4d3e";
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  let started = false;
+  for(let x=view.xMin; x<=view.xMax; x+=0.15){
+    const y = f(x);
+    if(y > view.yMax + 3) { started=false; continue; }
+    const [px,py] = toPx(x,y);
+    if(!started){ ctx.moveTo(px,py); started=true; } else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+
+  ctx.fillStyle = "#4a4d3e";
+  ctx.font = "italic 15px Georgia, serif";
+  const [lx,ly] = toPx(-5.5, f(-5.5)+2.2 > view.yMax ? view.yMax-2 : f(-5.5)+2.2);
+  ctx.fillText("f(x) = ¼x² − x + 5", 14, 26);
+}
+
+function drawHouses(){
+  Object.values(houses).forEach(h=>{
+    const [px,py] = toPx(h.x,h.y);
+    ctx.font = "26px serif";
+    ctx.textAlign = "center";
+    ctx.fillText("🏠", px, py+9);
+    ctx.font = "12.5px sans-serif";
+    ctx.fillStyle = h.color;
+    ctx.fillText(h.name, px, py+26);
+    ctx.fillStyle = "#555";
+    ctx.fillText(`(${h.x}, ${h.y})`, px, py+40);
+  });
+  ctx.textAlign = "left";
+}
+
+function drawPoint(x,y,color,label){
+  const [px,py] = toPx(x,y);
+  ctx.beginPath();
+  ctx.arc(px,py,5.5,0,Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  if(label){
+    ctx.fillStyle = "#222";
+    ctx.font = "12.5px sans-serif";
+    ctx.fillText(label, px+8, py-8);
+  }
+}
+
+function drawLineSeg(x0,y0,x1,y1,color,width,dash){
+  const [px0,py0] = toPx(x0,y0);
+  const [px1,py1] = toPx(x1,y1);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width || 3;
+  if(dash) ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(px0,py0);
+  ctx.lineTo(px1,py1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawTangentAt(a, extendLeft, extendRight, color){
+  const slope = fp(a);
+  const ya = f(a);
+  const x0 = a - extendLeft, x1 = a + extendRight;
+  drawLineSeg(x0, ya + slope*(x0-a), x1, ya + slope*(x1-a), color, 3.5);
+}
+
+function drawCar(x,y,angleDeg){
+  const [px,py] = toPx(x,y);
+  ctx.save();
+  ctx.translate(px,py);
+  ctx.rotate(angleDeg*Math.PI/180);
+  ctx.font = "22px serif";
+  ctx.textAlign = "center";
+  ctx.fillText("🚗", 0, 8);
+  ctx.restore();
+  ctx.textAlign = "left";
+}
+
+/* ---------- stage renderers ---------- */
+function render(){
+  drawGrid();
+  drawCurve();
+  drawHouses();
+
+  if(state.stage===1) renderStage1Extra();
+  if(state.stage===2) renderStage2Extra();
+  if(state.stage===3) renderStage3Extra();
+
+  renderPanel();
+}
+
+function renderStage1Extra(){
+  const a = 4, ya = f(a);
+  drawPoint(a,ya,"#c1583b","(4, 5)");
+  if(state.s1.running || state.s1.done){
+    drawTangentAt(a, 0, 22, "#c1583b");
+  }
+  // car animation along curve then tangent
+  const t = state.s1.carT;
+  if(state.s1.running || state.s1.done){
+    let cx, cy, ang;
+    const curveSpan = a - view.xMin;
+    const roadSpan = 22;
+    const totalT = curveSpan + roadSpan;
+    const dist = t * totalT;
+    if(dist <= curveSpan){
+      cx = view.xMin + dist;
+      cy = f(cx);
+      ang = Math.atan2(-(fp(cx)), 1) * 180/Math.PI * -1;
+    } else {
+      const d2 = dist - curveSpan;
+      cx = a + d2;
+      cy = ya + fp(a)*(cx-a);
+      ang = Math.atan2(-(fp(a)),1) * 180/Math.PI * -1;
+    }
+    drawCar(cx,cy,ang);
+  }
+}
+
+function renderStage2Extra(){
+  const a = state.s2.x, ya = f(a);
+  drawPoint(a, ya, "#3b7dbf", `(${a.toFixed(1)}, ${ya.toFixed(1)})`);
+  drawTangentAt(a, 6, 10, state.s2.locked ? "#3f8f5c" : "#3b7dbf");
+  drawCar(a,ya,0);
+}
+
+function renderStage3Extra(){
+  const a = state.s3.x, ya = f(a);
+  drawPoint(a, ya, "#9a4fae", `(${a.toFixed(1)}, ${ya.toFixed(1)})`);
+  // draw the tangent line extended toward x=20 to see if it reaches tzuyu's house
+  const slope = fp(a);
+  const x1 = 21;
+  const y1 = ya + slope*(x1-a);
+  drawLineSeg(a, ya, x1, y1, state.s3.locked ? "#3f8f5c" : "#9a4fae", 3.5);
+  drawCar(a,ya,0);
+}
+
+/* ---------- panel (right side controls) ---------- */
+const panel = document.getElementById('panel');
+
+function renderPanel(){
+  if(state.stage===0) return renderIntroPanel();
+  if(state.stage===1) return renderStage1Panel();
+  if(state.stage===2) return renderStage2Panel();
+  if(state.stage===3) return renderStage3Panel();
+  if(state.stage===4) return renderSummaryPanel();
+}
+
+function renderIntroPanel(){
+  panel.innerHTML = `
+    <h2>도로 설계 미션 시작</h2>
+    <div class="story">
+      곡선 도로 위를 달리는 자동차는 <b>그 곡선의 접선 방향</b>으로 나아가려는 성질이 있어요.
+      그래서 곡선이 끝나는 지점에 이어지는 직선 도로는 반드시 곡선의 <b>접선</b>이 되어야 운전자가
+      안전하게 운전할 수 있죠. 세 가지 미션을 통해 접선의 방정식으로 도로를 설계해 보세요.
+    </div>
+    <ul style="font-size:14px; line-height:1.8; padding-left:18px; margin:0 0 16px;">
+      <li>미션 1 — 핸들을 놓친 자동차는 어느 집에 도착할까?</li>
+      <li>미션 2 — 기울기 3인 새 도로, 어디에 이어야 할까?</li>
+      <li>미션 3 — 재영이네 집으로 안전하게 이어지는 도로는?</li>
+    </ul>
+    <div class="intro-actions">
+      <button class="primary" id="startBtn">미션 시작하기</button>
+    </div>
+  `;
+  document.getElementById('startBtn').onclick = ()=>{ state.stage=1; renderStageTrack(); render(); };
+}
+
+function renderStage1Panel(){
+  const s = state.s1;
+  panel.innerHTML = `
+    <h2>미션 1 · 핸들을 놓친 순간</h2>
+    <div class="story">
+      도로 위를 달리던 자동차가 점 <b>(4, 5)</b>에서 운전대를 놓았어요.
+      이제 자동차는 그 지점의 <b>접선 방향</b>으로 곧게 나아갑니다.
+      이 운전자는 어느 집에 도착하게 될까요?
+    </div>
+    <div class="choice-row" id="choiceRow">
+      ${Object.entries(houses).map(([key,h])=>`
+        <button class="choice-btn" data-key="${key}">${h.name} (${h.x}, ${h.y})</button>
+      `).join("")}
+    </div>
+    <div class="actions">
+      <button class="primary" id="runBtn" ${s.chosen? "":"disabled"}>출발!</button>
+      ${s.done ? `<button class="ghost" id="nextBtn">다음 미션 →</button>` : ""}
+    </div>
+    <div class="feedback ${s.done ? 'show '+(s.correct?'ok':'no') : ''}" id="fb1">
+      ${s.done ? feedbackStage1Text() : ""}
+    </div>
+  `;
+  panel.querySelectorAll('.choice-btn').forEach(btn=>{
+    if(s.chosen===btn.dataset.key) btn.classList.add('selected');
+    btn.onclick = ()=>{
+      if(s.running) return;
+      s.chosen = btn.dataset.key;
+      renderStage1Panel();
+    };
+  });
+  const runBtn = document.getElementById('runBtn');
+  if(runBtn) runBtn.onclick = ()=> startStage1Run();
+  const nextBtn = document.getElementById('nextBtn');
+  if(nextBtn) nextBtn.onclick = ()=>{ state.stage=2; renderStageTrack(); render(); };
+}
+
+function feedbackStage1Text(){
+  const s = state.s1;
+  if(s.correct){
+    return `정답이에요! 접선의 기울기는 f'(4) = ${fp(4)}이고, 접선의 방정식은 <b>y = x + 1</b>이에요.
+    x = 20을 대입하면 y = 21이 되어 정확히 <b>지우네 (20, 21)</b>에 도착해요.`;
+  }
+  return `아쉬워요. 접선의 방정식은 <b>y = x + 1</b>이에요. x = 20일 때 y = 21이므로
+  실제로는 <b>지우네 (20, 21)</b>에 도착해요. 애니메이션에서 도로를 다시 확인해보세요.`;
+}
+
+function startStage1Run(){
+  const s = state.s1;
+  if(!s.chosen || s.running) return;
+  s.running = true; s.carT = 0;
+  const target = "nayeon";
+  s.correct = (s.chosen === target);
+  const dur = 2600;
+  const t0 = performance.now();
+  function step(now){
+    const p = Math.min(1,(now-t0)/dur);
+    s.carT = p;
+    render();
+    if(p<1) requestAnimationFrame(step);
+    else {
+      s.running=false; s.done=true;
+      awardSticker('m1');
+      renderStage1Panel();
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function renderStage2Panel(){
+  const s = state.s2;
+  const slope = fp(s.x);
+  panel.innerHTML = `
+    <h2>미션 2 · 기울기 3인 도로 잇기</h2>
+    <div class="story">
+      기존 도로(곡선)에 <b>기울기가 3</b>인 새 직선 도로를 연결하려고 해요.
+      슬라이더로 접점을 움직여 접선의 기울기가 3이 되는 지점을 찾고, 확인 버튼을 눌러보세요.
+    </div>
+    <div class="slider-block">
+      <label><span>접점의 x좌표</span><span>x = ${s.x.toFixed(2)}</span></label>
+      <input type="range" min="-4" max="14" step="0.05" value="${s.x}" id="slider2" ${s.locked?"disabled":""}/>
+    </div>
+    <div class="readout">
+      <div class="chip">현재 기울기 f'(x) = <b>${slope.toFixed(2)}</b></div>
+      <div class="chip">목표 기울기 <b>3.00</b></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="lockBtn" ${s.locked?"disabled":""}>이 지점으로 확인해보기</button>
+      ${s.locked ? `<button class="ghost" id="nextBtn2">다음 미션 →</button>` : ""}
+    </div>
+    ${s.tried ? `
+      <button class="hint-toggle" id="hintBtn2">힌트 보기</button>
+      <div class="hint-box ${state.hintOpen?'show':''}">
+        f'(x) = ½x − 1 = 3 을 풀면 x = 8이에요. f(8) = ¼(64) − 8 + 5 = 13.
+      </div>
+    ` : ""}
+    <div class="feedback ${s.locked ? 'show ok' : (s.tried && s.wrong ? 'show no' : '')}" id="fb2">
+      ${s.locked
+        ? `도로 완성! 접점은 <b>(8, 13)</b>이고, 새 도로의 방정식은 <b>y = 3x − 11</b>이에요.`
+        : (s.tried && s.wrong ? `아직 기울기가 3이 아니에요. 슬라이더를 조절해서 다시 확인해보세요.` : "")}
+    </div>
+  `;
+  const slider = document.getElementById('slider2');
+  if(slider) slider.oninput = (e)=>{ s.x = parseFloat(e.target.value); render(); };
+  const lockBtn = document.getElementById('lockBtn');
+  if(lockBtn) lockBtn.onclick = ()=>{
+    s.tried = true;
+    const matched = Math.abs(fp(s.x)-3) < 0.05;
+    if(matched){
+      s.locked = true; s.wrong = false;
+      awardSticker('m2');
+    } else {
+      s.wrong = true;
+    }
+    render();
+  };
+  const nextBtn2 = document.getElementById('nextBtn2');
+  if(nextBtn2) nextBtn2.onclick = ()=>{ state.stage=3; renderStageTrack(); render(); };
+  const hintBtn2 = document.getElementById('hintBtn2');
+  if(hintBtn2) hintBtn2.onclick = ()=>{ state.hintOpen=!state.hintOpen; renderStage2Panel(); };
+}
+
+function renderStage3Panel(){
+  const s = state.s3;
+  const a = s.x;
+  const slope = fp(a);
+  const ya = f(a);
+  const yAt20 = ya + slope*(20-a);
+  panel.innerHTML = `
+    <h2>미션 3 · 재영이네 집으로 가는 도로</h2>
+    <div class="story">
+      곡선 도로에서 <b>재영이네 집 (20, 36)</b>까지 안전하게 이어지는 직선 도로를 만들어야 해요.
+      슬라이더로 접점을 움직여, 접선이 정확히 재영이네 집을 지나는 지점을 찾고 확인 버튼을 눌러보세요.
+    </div>
+    <div class="slider-block">
+      <label><span>접점의 x좌표</span><span>x = ${a.toFixed(2)}</span></label>
+      <input type="range" min="-4" max="14" step="0.05" value="${a}" id="slider3" ${s.locked?"disabled":""}/>
+    </div>
+    <div class="readout">
+      <div class="chip">x = 20일 때 도로의 y값 <b>${yAt20.toFixed(1)}</b></div>
+      <div class="chip">재영이네 집 y값 <b>36</b></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="lockBtn3" ${s.locked?"disabled":""}>이 지점으로 확인해보기</button>
+      ${s.locked ? `<button class="ghost" id="nextBtn3">결과 보기 →</button>` : ""}
+    </div>
+    ${s.tried ? `
+      <button class="hint-toggle" id="hintBtn3">힌트 보기</button>
+      <div class="hint-box ${state.hintOpen?'show':''}">
+        접점을 (a, f(a))라 하면 접선은 y − f(a) = f'(a)(x − a). 이 직선이 (20, 36)을 지난다는 조건으로
+        방정식을 세우면 a² − 40a + 204 = 0, 즉 a = 6 또는 a = 34가 나와요.
+        그래프 범위 안에서 자연스러운 답은 <b>a = 6</b>이에요.
+      </div>
+    ` : ""}
+    <div class="feedback ${s.locked ? 'show ok' : (s.tried && s.wrong ? 'show no' : '')}" id="fb3">
+      ${s.locked
+        ? `도로 완성! 접점은 <b>(6, 8)</b>이고, 새 도로의 방정식은 <b>y = 2x − 4</b>예요. 재영이네 집까지 안전하게 연결됐어요.`
+        : (s.tried && s.wrong ? `아직 재영이네 집을 지나지 않아요. 슬라이더를 조절해서 다시 확인해보세요.` : "")}
+    </div>
+  `;
+  const slider = document.getElementById('slider3');
+  if(slider) slider.oninput = (e)=>{ s.x = parseFloat(e.target.value); render(); };
+  const lockBtn = document.getElementById('lockBtn3');
+  if(lockBtn) lockBtn.onclick = ()=>{
+    s.tried = true;
+    const a2 = s.x, slope2 = fp(a2), ya2 = f(a2);
+    const yAt20_2 = ya2 + slope2*(20-a2);
+    const matched = Math.abs(yAt20_2 - 36) < 0.4;
+    if(matched){
+      s.locked = true; s.wrong = false;
+      awardSticker('m3');
+    } else {
+      s.wrong = true;
+    }
+    render();
+  };
+  const nextBtn3 = document.getElementById('nextBtn3');
+  if(nextBtn3) nextBtn3.onclick = ()=>{ state.stage=4; renderStageTrack(); render(); };
+  const hintBtn3 = document.getElementById('hintBtn3');
+  if(hintBtn3) hintBtn3.onclick = ()=>{ state.hintOpen=!state.hintOpen; renderStage3Panel(); };
+}
+
+function renderSummaryPanel(){
+  panel.innerHTML = `
+    <h2>도로 설계 완료!</h2>
+    <div class="story">세 개의 도로를 모두 완성했어요. 아래는 정리된 접선의 방정식이에요.</div>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <h3>미션 1 · 핸들을 놓친 지점</h3>
+        <p>접점 (4, 5), 도착지: 지우네 (20, 21)</p>
+        <div class="eq">y = x + 1</div>
+      </div>
+      <div class="summary-card">
+        <h3>미션 2 · 기울기 3 도로</h3>
+        <p>접점 (8, 13)</p>
+        <div class="eq">y = 3x − 11</div>
+      </div>
+      <div class="summary-card">
+        <h3>미션 3 · 재영이네 집으로</h3>
+        <p>접점 (6, 8), 도착지: 재영이네 (20, 36)</p>
+        <div class="eq">y = 2x − 4</div>
+      </div>
+    </div>
+    <div class="actions" style="margin-top:18px;">
+      <button class="primary" id="nextFinalBtn">다음: 자율주행 센서 이야기 →</button>
+      <button class="ghost" id="restartBtn">처음부터 다시 하기</button>
+    </div>
+  `;
+  document.getElementById('restartBtn').onclick = ()=>{
+    state = { stage:0, s1:{chosen:null,running:false,done:false,carT:0},
+              s2:{x:2,locked:false,tried:false,wrong:false}, s3:{x:2,locked:false,tried:false,wrong:false}, hintOpen:false,
+              stickers:{ m1:false, m2:false, m3:false, laser:false } };
+    document.querySelector('.board').style.display = '';
+    finalWrap.classList.add('hide');
+    document.getElementById('gachaWrap').classList.add('hide');
+    document.getElementById('gachaResult').classList.remove('show');
+    gachaOpened = false;
+    renderStageTrack(); renderStickerBar(); render();
+  };
+  document.getElementById('nextFinalBtn').onclick = ()=>{
+    goToFinalSection();
+  };
+}
+
+/* ---------- stage progress track ---------- */
+function renderStageTrack(){
+  const track = document.getElementById('stageTrack');
+  track.innerHTML = "";
+  for(let i=1;i<=3;i++){
+    const dot = document.createElement('div');
+    dot.className = "stage-dot" + (state.stage>i || state.stage===4 ? " done" : (state.stage===i ? " current" : ""));
+    track.appendChild(dot);
+  }
+  const dot4 = document.createElement('div');
+  dot4.className = "stage-dot" + (state.stickers.laser ? " done" : (state.stage===4 ? " current" : ""));
+  track.appendChild(dot4);
+}
+
+/* =========================================================
+   스티커 모으기
+   ========================================================= */
+const STICKER_ORDER = ['m1','m2','m3','laser'];
+const STICKER_ICON = { m1:'⭐', m2:'⭐', m3:'⭐', laser:'⭐' };
+
+function renderStickerBar(){
+  const wrap = document.getElementById('stickerSlots');
+  wrap.innerHTML = STICKER_ORDER.map(key=>{
+    const filled = state.stickers[key];
+    return `<div class="sticker-slot${filled?' filled':''}" data-key="${key}">${filled ? STICKER_ICON[key] : ''}</div>`;
+  }).join('');
+}
+
+function awardSticker(key){
+  if(state.stickers[key]) return; // 이미 받은 스티커면 중복 지급 안함
+  state.stickers[key] = true;
+  renderStickerBar();
+  const slot = document.querySelector(`.sticker-slot[data-key="${key}"]`);
+  if(slot){
+    slot.classList.add('pop');
+    setTimeout(()=> slot.classList.remove('pop'), 500);
+  }
+  renderStageTrack();
+  checkAllStickersCollected();
+}
+
+function checkAllStickersCollected(){
+  const allDone = STICKER_ORDER.every(k=>state.stickers[k]);
+  if(allDone){
+    document.getElementById('gachaWrap').classList.remove('hide');
+    document.getElementById('gachaWrap').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+}
+
+renderStageTrack();
+renderStickerBar();
+render();
+
+/* =========================================================
+   랜덤박스(가챠) — 꽝 / 초콜릿 / 젤리
+   ========================================================= */
+let gachaOpened = false;
+
+const GACHA_OUTCOMES = [
+  { key:'lose',      weight:40, emoji:'💨', label:'꽝!',      msg:'아쉽지만 다음 기회에! 그래도 오늘 수업 완주 진짜 축하해요 🎉' },
+  { key:'chocolate', weight:30, emoji:'🍫', label:'초콜릿!',  msg:'이 화면을 선생님께 보여주고 초콜릿을 받아가세요! 🍫' },
+  { key:'jelly',     weight:30, emoji:'🍬', label:'젤리!',    msg:'이 화면을 선생님께 보여주고 젤리를 받아가세요! 🍬' },
+];
+
+function pickGachaOutcome(){
+  const total = GACHA_OUTCOMES.reduce((s,o)=>s+o.weight, 0);
+  let r = Math.random() * total;
+  for(const o of GACHA_OUTCOMES){
+    if(r < o.weight) return o;
+    r -= o.weight;
+  }
+  return GACHA_OUTCOMES[0];
+}
+
+document.getElementById('gachaBox').onclick = function(){
+  if(gachaOpened) return;
+  const box = this;
+  box.classList.add('shaking');
+  setTimeout(()=>{
+    box.classList.remove('shaking');
+    gachaOpened = true;
+    box.classList.add('disabled');
+    box.textContent = '📦';
+
+    const outcome = pickGachaOutcome();
+    const resultBox = document.getElementById('gachaResult');
+    document.getElementById('gachaEmoji').textContent = outcome.emoji;
+    const labelEl = document.getElementById('gachaLabel');
+    labelEl.textContent = outcome.label;
+    labelEl.className = 'label ' + (outcome.key==='lose' ? 'lose' : 'win');
+    document.getElementById('gachaMsg').textContent = outcome.msg;
+    resultBox.classList.add('show');
+  }, 600);
+};
+
+/* =========================================================
+   마무리 섹션 (Step 4~6): 레이저 미션 + 개념 복습 + 자율주행 시뮬레이션
+   ========================================================= */
+const finalWrap = document.getElementById('finalWrap');
+let finalInitialized = false;
+
+function goToFinalSection(){
+  document.querySelector('.board').style.display = 'none';
+  finalWrap.classList.remove('hide');
+  if(!finalInitialized){
+    initFinalSection();
+    finalInitialized = true;
+  }
+  finalWrap.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function initFinalSection(){
+  /* --- Step 4: 레이저 미션 --- */
+  const gCanvas = document.getElementById('fwGameCanvas');
+  const gCtx = gCanvas.getContext('2d');
+  const slider = document.getElementById('fwSlopeSlider');
+  const slopeVal = document.getElementById('fwSlopeValue');
+  const successMsg = document.getElementById('fwSuccessMessage');
+  const reviewSec = document.getElementById('fwReviewSection');
+  const simSec = document.getElementById('fwSimSection');
+  const sim2Sec = document.getElementById('fwSim2Section');
+
+  let gameSolved = false;
+
+  function toCanvas(x, y){
+    const scale = 40;
+    return [gCanvas.width/2 + x*scale, gCanvas.height/2 - y*scale];
+  }
+
+  function drawGame(){
+    gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
+
+    gCtx.strokeStyle = '#e2e8f0';
+    gCtx.lineWidth = 1;
+    for(let i=-10;i<=10;i++){
+      let [cx] = toCanvas(i,0);
+      gCtx.beginPath(); gCtx.moveTo(cx,0); gCtx.lineTo(cx,gCanvas.height); gCtx.stroke();
+      let [,cy2] = toCanvas(0,i);
+      gCtx.beginPath(); gCtx.moveTo(0,cy2); gCtx.lineTo(gCanvas.width,cy2); gCtx.stroke();
+    }
+    gCtx.strokeStyle = '#94a3b8';
+    gCtx.beginPath(); gCtx.moveTo(0, gCanvas.height/2); gCtx.lineTo(gCanvas.width, gCanvas.height/2); gCtx.stroke();
+    gCtx.beginPath(); gCtx.moveTo(gCanvas.width/2, 0); gCtx.lineTo(gCanvas.width/2, gCanvas.height); gCtx.stroke();
+
+    gCtx.strokeStyle = '#334155';
+    gCtx.lineWidth = 3;
+    gCtx.beginPath();
+    for(let x=-4;x<=4;x+=0.1){
+      let y = -Math.pow(x,2) + 5;
+      let [cx,cy] = toCanvas(x,y);
+      if(x===-4) gCtx.moveTo(cx,cy); else gCtx.lineTo(cx,cy);
+    }
+    gCtx.stroke();
+
+    const targetX = 1, targetY = 4;
+    let [tcx,tcy] = toCanvas(targetX,targetY);
+
+    // 🎯 빨간색 과녁 (레이저가 맞혀야 하는 고정 지점)
+    const goalX = 4, goalY = -2;
+    let [gx,gy] = toCanvas(goalX, goalY);
+    const goalColor = gameSolved ? '#16a34a' : '#ef4444';
+    gCtx.beginPath(); gCtx.arc(gx,gy,14,0,Math.PI*2); gCtx.fillStyle = goalColor; gCtx.fill();
+    gCtx.beginPath(); gCtx.arc(gx,gy,9,0,Math.PI*2); gCtx.fillStyle = '#fff'; gCtx.fill();
+    gCtx.beginPath(); gCtx.arc(gx,gy,4,0,Math.PI*2); gCtx.fillStyle = goalColor; gCtx.fill();
+    gCtx.fillStyle = goalColor;
+    gCtx.font = '12px sans-serif';
+    gCtx.textAlign = 'center';
+    gCtx.fillText(gameSolved ? '명중!' : '과녁', gx, gy+30);
+    gCtx.textAlign = 'left';
+
+    let currentSlope = parseFloat(slider.value);
+    gCtx.strokeStyle = gameSolved ? '#16a34a' : '#ef4444';
+    gCtx.lineWidth = 2;
+    gCtx.beginPath();
+    let startX = -5;
+    let startY = currentSlope*(startX-targetX)+targetY;
+    let endX = 5;
+    let endY = currentSlope*(endX-targetX)+targetY;
+    let [scx,scy] = toCanvas(startX,startY);
+    let [ecx,ecy] = toCanvas(endX,endY);
+    gCtx.moveTo(scx,scy);
+    gCtx.lineTo(ecx,ecy);
+    gCtx.stroke();
+
+    gCtx.fillStyle = '#2563eb';
+    gCtx.beginPath();
+    gCtx.arc(tcx,tcy,6,0,Math.PI*2);
+    gCtx.fill();
+  }
+
+  slider.addEventListener('input', (e)=>{
+    let val = parseFloat(e.target.value);
+    slopeVal.innerText = val.toFixed(1);
+    if(val===-2.0 && !gameSolved){
+      gameSolved = true;
+      successMsg.classList.add('show');
+      reviewSec.classList.remove('fw-hidden');
+      simSec.classList.remove('fw-hidden');
+      sim2Sec.classList.remove('fw-hidden');
+      awardSticker('laser');
+      startSim();
+      startSim2();
+    }
+    drawGame();
+  });
+  drawGame();
+
+  /* --- Step 6: 자율주행 시뮬레이션 --- */
+  const sCanvas = document.getElementById('fwSimCanvas');
+  const sCtx = sCanvas.getContext('2d');
+  const tangentToggle = document.getElementById('fwShowTangent');
+  let time = 0;
+  let simStarted = false;
+
+  function drawSimulation(){
+    sCtx.clearRect(0,0,sCanvas.width,sCanvas.height);
+    const width = sCanvas.width, height = sCanvas.height;
+    const centerY = height/2;
+
+    sCtx.strokeStyle = '#94a3b8';
+    sCtx.lineWidth = 40;
+    sCtx.lineCap = 'round';
+    sCtx.beginPath();
+    for(let x=0;x<=width;x+=5){
+      let y = centerY + Math.sin(x*0.01)*60;
+      if(x===0) sCtx.moveTo(x,y); else sCtx.lineTo(x,y);
+    }
+    sCtx.stroke();
+
+    sCtx.strokeStyle = '#ffffff';
+    sCtx.lineWidth = 2;
+    sCtx.setLineDash([15,15]);
+    sCtx.beginPath();
+    for(let x=0;x<=width;x+=5){
+      let y = centerY + Math.sin(x*0.01)*60;
+      if(x===0) sCtx.moveTo(x,y); else sCtx.lineTo(x,y);
+    }
+    sCtx.stroke();
+    sCtx.setLineDash([]);
+
+    let carX = (time*1.5) % width;
+    let carY = centerY + Math.sin(carX*0.01)*60;
+    let slope = 60*0.01*Math.cos(carX*0.01);
+    let angle = Math.atan(slope);
+
+    sCtx.save();
+    sCtx.translate(carX,carY);
+    sCtx.rotate(angle);
+    sCtx.fillStyle = '#2563eb';
+    sCtx.fillRect(-15,-10,30,20);
+    sCtx.fillStyle = '#1e3a8a';
+    sCtx.fillRect(5,-8,8,16);
+
+    if(tangentToggle.checked){
+      sCtx.strokeStyle = '#ef4444';
+      sCtx.lineWidth = 3;
+      sCtx.beginPath();
+      sCtx.moveTo(15,0);
+      sCtx.lineTo(150,0);
+      sCtx.stroke();
+      sCtx.beginPath();
+      sCtx.moveTo(150,0);
+      sCtx.lineTo(140,-5);
+      sCtx.lineTo(140,5);
+      sCtx.fill();
+    }
+    sCtx.restore();
+
+    time++;
+    requestAnimationFrame(drawSimulation);
+  }
+
+  function startSim(){
+    if(simStarted) return;
+    simStarted = true;
+    drawSimulation();
+  }
+
+  /* --- Step 7: 날아가는 공의 순간 속도 --- */
+  const bCanvas = document.getElementById('fwSim2Canvas');
+  const bCtx = bCanvas.getContext('2d');
+  const velocityToggle = document.getElementById('fwShowVelocity');
+  let time2 = 0;
+  let sim2Started = false;
+
+  // 공의 궤적: 왼쪽에서 오른쪽으로 포물선을 그리며 날아감
+  function ballY(x, width, height){
+    const ground = height - 40;
+    const amp = height - 80;
+    return ground - amp * Math.sin(Math.PI * x / width);
+  }
+  function ballSlope(x, width, height){
+    const amp = height - 80;
+    return -amp * (Math.PI/width) * Math.cos(Math.PI * x / width);
+  }
+
+  function drawSimulation2(){
+    bCtx.clearRect(0,0,bCanvas.width,bCanvas.height);
+    const width = bCanvas.width, height = bCanvas.height;
+    const ground = height - 40;
+
+    // 땅
+    bCtx.strokeStyle = '#94a3b8';
+    bCtx.lineWidth = 4;
+    bCtx.beginPath();
+    bCtx.moveTo(0, ground+10);
+    bCtx.lineTo(width, ground+10);
+    bCtx.stroke();
+
+    // 예상 궤적(점선)
+    bCtx.strokeStyle = '#cbd5e1';
+    bCtx.lineWidth = 2;
+    bCtx.setLineDash([6,6]);
+    bCtx.beginPath();
+    for(let x=0;x<=width;x+=5){
+      let y = ballY(x, width, height);
+      if(x===0) bCtx.moveTo(x,y); else bCtx.lineTo(x,y);
+    }
+    bCtx.stroke();
+    bCtx.setLineDash([]);
+
+    let ballX = (time2*2.2) % width;
+    if(ballX < 2) ballX = 2;
+    let ballYPos = ballY(ballX, width, height);
+    let slope = ballSlope(ballX, width, height);
+    let angle = Math.atan(slope);
+
+    bCtx.save();
+    bCtx.translate(ballX, ballYPos);
+
+    if(velocityToggle.checked){
+      bCtx.save();
+      bCtx.rotate(angle);
+      bCtx.strokeStyle = '#16a34a';
+      bCtx.lineWidth = 3;
+      bCtx.beginPath();
+      bCtx.moveTo(10,0);
+      bCtx.lineTo(70,0);
+      bCtx.stroke();
+      bCtx.fillStyle = '#16a34a';
+      bCtx.beginPath();
+      bCtx.moveTo(70,0);
+      bCtx.lineTo(60,-5);
+      bCtx.lineTo(60,5);
+      bCtx.fill();
+      bCtx.restore();
+    }
+
+    bCtx.font = '22px serif';
+    bCtx.textAlign = 'center';
+    bCtx.fillText('⚾', 0, 8);
+    bCtx.restore();
+    bCtx.textAlign = 'left';
+
+    time2++;
+    requestAnimationFrame(drawSimulation2);
+  }
+
+  function startSim2(){
+    if(sim2Started) return;
+    sim2Started = true;
+    drawSimulation2();
+  }
+}
+</script>
+</body>
+</html>
