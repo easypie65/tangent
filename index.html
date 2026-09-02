@@ -593,7 +593,7 @@ function drawCar(x,y,angleDeg){
 }
 
 /* ---------- stage renderers ---------- */
-function render(){
+function redrawCanvas(){
   drawGrid();
   drawCurve();
   drawHouses();
@@ -601,7 +601,10 @@ function render(){
   if(state.stage===1) renderStage1Extra();
   if(state.stage===2) renderStage2Extra();
   if(state.stage===3) renderStage3Extra();
+}
 
+function render(){
+  redrawCanvas();
   renderPanel();
 }
 
@@ -760,12 +763,12 @@ function renderStage2Panel(){
       슬라이더로 접점을 움직여 접선의 기울기가 3이 되는 지점을 찾고, 확인 버튼을 눌러보세요.
     </div>
     <div class="slider-block">
-      <label><span>접점의 x좌표</span><span>x = ${s.x.toFixed(2)}</span></label>
-      <input type="range" min="-4" max="14" step="0.05" value="${s.x}" id="slider2" ${s.locked?"disabled":""}/>
+      <label><span>접점의 x좌표</span><span id="s2xLabel">x = ${s.x.toFixed(1)}</span></label>
+      <input type="range" min="-4" max="14" step="0.01" value="${s.x}" id="slider2" ${s.locked?"disabled":""}/>
     </div>
     <div class="readout">
-      <div class="chip">현재 기울기 f'(x) = <b>${slope.toFixed(2)}</b></div>
-      <div class="chip">목표 기울기 <b>3.00</b></div>
+      <div class="chip">현재 기울기 f'(x) = <b id="s2SlopeVal">${slope.toFixed(1)}</b></div>
+      <div class="chip">목표 기울기 <b>3.0</b></div>
     </div>
     <div class="actions">
       <button class="primary" id="lockBtn" ${s.locked?"disabled":""}>이 지점으로 확인해보기</button>
@@ -784,7 +787,12 @@ function renderStage2Panel(){
     </div>
   `;
   const slider = document.getElementById('slider2');
-  if(slider) slider.oninput = (e)=>{ s.x = parseFloat(e.target.value); render(); };
+  if(slider) slider.oninput = (e)=>{
+    s.x = parseFloat(e.target.value);
+    document.getElementById('s2xLabel').textContent = `x = ${s.x.toFixed(1)}`;
+    document.getElementById('s2SlopeVal').textContent = fp(s.x).toFixed(1);
+    redrawCanvas();
+  };
   const lockBtn = document.getElementById('lockBtn');
   if(lockBtn) lockBtn.onclick = ()=>{
     s.tried = true;
@@ -816,11 +824,11 @@ function renderStage3Panel(){
       슬라이더로 접점을 움직여, 접선이 정확히 재영이네 집을 지나는 지점을 찾고 확인 버튼을 눌러보세요.
     </div>
     <div class="slider-block">
-      <label><span>접점의 x좌표</span><span>x = ${a.toFixed(2)}</span></label>
-      <input type="range" min="-4" max="14" step="0.05" value="${a}" id="slider3" ${s.locked?"disabled":""}/>
+      <label><span>접점의 x좌표</span><span id="s3xLabel">x = ${a.toFixed(1)}</span></label>
+      <input type="range" min="-4" max="14" step="0.01" value="${a}" id="slider3" ${s.locked?"disabled":""}/>
     </div>
     <div class="readout">
-      <div class="chip">x = 20일 때 도로의 y값 <b>${yAt20.toFixed(1)}</b></div>
+      <div class="chip">x = 20일 때 도로의 y값 <b id="s3YAt20Val">${yAt20.toFixed(1)}</b></div>
       <div class="chip">재영이네 집 y값 <b>36</b></div>
     </div>
     <div class="actions">
@@ -842,7 +850,14 @@ function renderStage3Panel(){
     </div>
   `;
   const slider = document.getElementById('slider3');
-  if(slider) slider.oninput = (e)=>{ s.x = parseFloat(e.target.value); render(); };
+  if(slider) slider.oninput = (e)=>{
+    s.x = parseFloat(e.target.value);
+    const a2 = s.x, slope2 = fp(a2), ya2 = f(a2);
+    const yAt20_2 = ya2 + slope2*(20-a2);
+    document.getElementById('s3xLabel').textContent = `x = ${a2.toFixed(1)}`;
+    document.getElementById('s3YAt20Val').textContent = yAt20_2.toFixed(1);
+    redrawCanvas();
+  };
   const lockBtn = document.getElementById('lockBtn3');
   if(lockBtn) lockBtn.onclick = ()=>{
     s.tried = true;
@@ -950,7 +965,6 @@ function checkAllStickersCollected(){
   const allDone = STICKER_ORDER.every(k=>state.stickers[k]);
   if(allDone){
     document.getElementById('gachaWrap').classList.remove('hide');
-    document.getElementById('gachaWrap').scrollIntoView({ behavior:'smooth', block:'start' });
   }
 }
 
